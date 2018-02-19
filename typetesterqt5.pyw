@@ -1,9 +1,22 @@
-from PyQt5.QtCore import Qt, QTime
+from PyQt5.QtCore import Qt, QTime, QEvent
 from PyQt5.QtWidgets import (QWidget, QGridLayout, QPushButton, QLineEdit, 
-    QTextEdit, QApplication, QLabel,QSizePolicy)
+    QTextEdit, QApplication, QLabel,QSizePolicy, QHBoxLayout)
 from PyQt5.QtGui import QFont, QPalette, QColor
 import random
 import sys
+
+class MyLineEdit(QLineEdit):
+
+    def __init__(self):
+        super().__init__()
+        self.backspace_flag = False
+        
+    def event(self, event):
+        if (event.type()== QEvent.KeyPress) and (event.key() != Qt.Key_Backspace):
+            self.backspace_flag = False
+        if (event.type()== QEvent.KeyPress) and (event.key() == Qt.Key_Backspace):
+            self.backspace_flag = True
+        return QLineEdit.event(self, event)
 
 class Example(QWidget):
     
@@ -12,56 +25,59 @@ class Example(QWidget):
         
         self.initUI()
         
-        
     def initUI(self):      
 
         self.random_line = ""
         self.time = QTime()
         self.time.start()
-
+        # Create grid layout
         grid = QGridLayout()
         grid.setContentsMargins(1,1,1,1)
         grid.setSpacing(1)
-        
-        self.setLayout(grid)
 
-        self.entry_widget = QLineEdit(self)
+        self.setLayout(grid)
+        # Create text input widget
+        self.entry_widget = MyLineEdit()
         grid.addWidget(self.entry_widget, 0,0,1,5, Qt.AlignTop) 
         grid.setRowStretch(0, 0)
-
+        # Create text display widget
         self.text_widget = QTextEdit(self)
         self.text_widget.setReadOnly(True)
         grid.addWidget(self.text_widget, 1,0,1,5, Qt.AlignTop)
         grid.setRowStretch(1, 10)
 
-        #policy = self.text_widget.sizePolicy()
-        #policy.setVerticalStretch(1)
-        #self.text_widget.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-
-        
+        # Create information labels
+        hbox = QHBoxLayout()
+        grid.addLayout(hbox,2,0,1,5)
+        # Current wpm label
         self.wpm_current_label = QLabel(self)
+        self.wpm_current_label.setMaximumWidth(140)
         self.wpm_current_label.setTextFormat(Qt.RichText)
-        grid.addWidget(self.wpm_current_label,2,2)
-        grid.setRowStretch(2, 0)
-
+        hbox.addWidget(self.wpm_current_label)
+        # Average wpm label
         self.wpm_average_label = QLabel(self)
-        grid.addWidget(self.wpm_average_label,2,4)
+        hbox.addWidget(self.wpm_average_label)
+        # Number of errors label
+        self.errors_label = QLabel(self)
+        hbox.addWidget(self.errors_label)
 
         self.initialize_all()
 
-        self.background_right = "background-color: white;font-size: 12pt; font-family: Verdana;font-weight: bold"
-        self.background_wrong = "background-color: pink;font-size: 12pt; font-family: Verdana;font-weight: bold"
-
-        self.wpm_current_label.setStyleSheet("font-size: 12pt; font-family: Verdana;font-weight: bold")
-        self.wpm_average_label.setStyleSheet("font-size: 12pt; font-family: Verdana;font-weight: bold")
-        self.entry_widget.setStyleSheet(self.background_right)
-        self.text_widget.setStyleSheet(self.background_right)
+        self.background_right = "background-color: white;" 
+        self.background_wrong = "background-color: pink;"
+        self.font = "font-size: 12pt; font-family: Verdana;font-weight: bold;"
+        
+        self.wpm_current_label.setStyleSheet(self.font)
+        self.wpm_average_label.setStyleSheet(self.font)
+        self.errors_label.setStyleSheet(self.font)
+        
+        self.entry_widget.setStyleSheet(self.background_right + self.font)
+        self.text_widget.setStyleSheet(self.background_right + self.font)
 
         self.load_random_line()
 
         self.entry_widget.textChanged.connect(lambda changed:
             self.text_widget_handler(changed, self.random_line))
-        
         
         self.setGeometry(580, 0, 515, 115)
         self.setWindowTitle('Type Tester')
@@ -72,14 +88,21 @@ class Example(QWidget):
         self.test_start = False
         self.match_end_index = 0
         self.wpm_value = 0
+
+        self.error_counter = 0
+        self.backspace = False
+        
         self.time.restart()
         self.average_value = self.get_average_speed("speed_records.txt")
-        self.wpm_current_label.setText("WMP : " + "%-10.2f" %self.wpm_value) #+ str(self.wpm_value))
-        self.wpm_average_label.setText("Average : " + str(self.average_value)) #"%8.2d" % self.average_value)#+ ,float))
+        self.wpm_current_label.setText("WMP : %-10.2f" %self.wpm_value) 
+        self.wpm_average_label.setText("Average : %.2f" %self.average_value)
+        self.errors_label.setText("Errores : %d" %self.error_counter)
         if clear_text_widget:
             self.text_widget.setHtml("""<p1 style="background-color:lightblue;">""" + self.random_line[0] + "</p1>" + 
                                     self.random_line[1:])
 
+    def set_backspace(self, state):
+        self.backspace = state
         
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Tab:
@@ -90,10 +113,7 @@ class Example(QWidget):
             self.entry_widget.clear()
             self.load_random_line()
             self.initialize_all()
-        #else:
-            #if not self.test_start:
-                #self.time.restart()
-                #self.test_start = True
+
                 
     def get_random_line(self, filename):
         with open(filename, "rt", encoding="utf-8") as text_file:
@@ -135,11 +155,15 @@ class Example(QWidget):
         self.wpm_current_label.setText("WMP : " + "%-10.2f" %self.wpm_value)
         if self.test_end:
             return None
-
+    
         not_matched, matched = self.matcher(string_a, string_b)
         
         if not_matched >=1:
-            self.text_widget.setStyleSheet(self.background_wrong)
+            if self.entry_widget.backspace_flag == False:
+                self.error_counter += 1
+                self.errors_label.setText("Errores : %d" %self.error_counter)
+
+            self.text_widget.setStyleSheet(self.background_wrong + self.font)
             self.text_widget.setHtml("<font color=\"Gray\">"+ string_b[:matched] + "</font>" +
                                     #"""<p1 style="background-color:lightblue;">""" + string_b[matched] + "</p1>" +
                                     "<font color=\"Red\">" + string_b[matched:matched+not_matched] + "</font>" +
@@ -151,7 +175,7 @@ class Example(QWidget):
                 self.wpm_value = 0
                 self.test_start = True
                 
-            self.text_widget.setStyleSheet(self.background_right)
+            self.text_widget.setStyleSheet(self.background_right + self.font)
             self.text_widget.setHtml("<font color=\"Gray\">"+ string_b[:matched] + "</font>" +
                                     """<p1 style="background-color:lightblue;">""" + string_b[matched] + "</p1>" +
                                     #"<font color=\"Red\">" + string_b[matched:matched+not_matched] + "</font>" +
