@@ -8,7 +8,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-You will need Python 3.x and pyqt5. Just clone this repo, install the dependencies and run the main .py file, rename the file to .pyw to run w/o console on Windows.
+You will need Python 3.x and pyqt5. Just clone this repo, install the dependencies and run the main .py file, run .pyw to open w/o console on Windows.
 
 #### pyqt5 installation on Windows
 ```
