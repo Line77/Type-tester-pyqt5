@@ -162,7 +162,6 @@ class Example(QWidget):
 
     def text_widget_handler(self, string_a, string_b):
 
-        self.wpm_current_label.setText("WMP : {:.2f}".format(self.wpm_value))
         if self.test_end:
             return None
 
@@ -203,11 +202,15 @@ class Example(QWidget):
                                      string_b[matched+1+not_matched:])
             # Calculation for wpm
             if self.test_start:
-                self.wpm_value = round((matched)/(
+                if not self.time.elapsed():
+                    self.wpm_value = 999
+                else:
+                    self.wpm_value = round((matched)/(
                                         5*(self.time.elapsed())/(1000*60)), 2)
                 if self.wpm_value > 999:
                     self.wpm_value = 999
-
+        self.wpm_current_label.setText("WMP : {:.2f}".format(self.wpm_value))
+        
         if matched == (len(self.random_line)-1):
             self.write_record("speed_records.txt", self.wpm_value)
             self.average_value = self.get_average_speed("speed_records.txt")
