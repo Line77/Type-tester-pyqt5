@@ -134,7 +134,7 @@ class Example(QWidget):
     def load_random_line(self):
         self.text_widget.clear()
         self.line_number, self.random_line = self.get_random_line(
-                                                                "phrases2.txt")
+                                                                "english_conversations2.txt")
         self.text_widget.setHtml(self.next_char + self.random_line[0] + "</p1>"
                                  + self.random_line[1:])
 
